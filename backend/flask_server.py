@@ -5,6 +5,7 @@ import os
 import tempfile
 import logging
 import uuid
+import json
 from werkzeug.utils import secure_filename
 from msb_hackathon.charts_predict import DataPreprocessingAgent, MarketAnalysisApp
 
@@ -63,6 +64,14 @@ def get_session_state():
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+
+def sample_to_records(df, n):
+    """Convert the first n rows of a dataframe to JSON-safe records. pandas' own
+    .to_dict(orient='records') leaves NaN as a float, which Python's json module (and thus
+    Flask's jsonify) serializes as a literal NaN token - invalid JSON that browsers reject.
+    Routing through df.to_json() instead lets pandas convert NaN to a proper JSON null."""
+    return json.loads(df.head(n).to_json(orient='records'))
+
 @app.route('/upload', methods=['POST'])
 @app.route('/api/upload', methods=['POST'])
 def upload_file():
@@ -93,15 +102,20 @@ def upload_file():
             market_analysis_app = MarketAnalysisApp(filepath)
             state['market_analysis_app'] = market_analysis_app
 
-            # Store dataset info
+            # Store dataset info. Show the raw uploaded values in the preview/charts (original_data,
+            # captured before preprocessing) rather than the scaled/encoded values in .data that
+            # feed the analysis pipeline - a StandardScaler'd column of z-scores like -0.69, 1.66
+            # means nothing to someone looking at their own dataset.
             state['current_dataset'] = None
-            if market_analysis_app.dataset_manager and market_analysis_app.dataset_manager.data is not None:
-                sample_size = min(1000, len(market_analysis_app.dataset_manager.data))
+            dataset_manager = market_analysis_app.dataset_manager
+            if dataset_manager and dataset_manager.data is not None:
+                display_df = dataset_manager.original_data if dataset_manager.original_data is not None else dataset_manager.data
+                sample_size = min(1000, len(display_df))
                 state['current_dataset'] = {
                     'filename': filename,
-                    'rows': len(market_analysis_app.dataset_manager.data),
-                    'columns': market_analysis_app.dataset_manager.data.columns.tolist(),
-                    'data_sample': market_analysis_app.dataset_manager.data.head(sample_size).to_dict(orient='records')
+                    'rows': len(display_df),
+                    'columns': display_df.columns.tolist(),
+                    'data_sample': sample_to_records(display_df, sample_size)
                 }
 
             logger.info("Upload successful, returning response")
@@ -175,7 +189,7 @@ def preprocess_data():
             'filename': current_dataset.get('filename', 'preprocessed_data.csv') if current_dataset else 'preprocessed_data.csv',
             'rows': len(preprocessed_df),
             'columns': preprocessed_df.columns.tolist(),
-            'data_sample': preprocessed_df.head(sample_size).to_dict(orient='records'),
+            'data_sample': sample_to_records(preprocessed_df, sample_size),
             'summary': preprocessing_agent.get_preprocessing_summary()
         }
 
