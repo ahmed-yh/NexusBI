@@ -108,7 +108,7 @@ export const DataVisualization: React.FC<DataVisualizationProps> = ({ data, feat
   console.log("Valid features determined:", validFeatures);
 
   // States for chart configuration
-  const [chartType, setChartType] = useState<'bar' | 'scatter' | '3d'>('bar');
+  const [chartType, setChartType] = useState<'bar' | 'scatter' | 'bubble'>('bar');
   const [xAxis, setXAxis] = useState<string>('');
   const [yAxis, setYAxis] = useState<string>('');
   const [zAxis, setZAxis] = useState<string>('');
@@ -181,7 +181,7 @@ export const DataVisualization: React.FC<DataVisualizationProps> = ({ data, feat
       if (numericFeatures.length > 0) {
         setYAxis(numericFeatures[0]);
         
-        // Set default Z axis if in 3D mode
+        // Set default Z axis if in bubble mode
         if (numericFeatures.length > 1) {
           setZAxis(numericFeatures[1]);
         } else {
@@ -271,7 +271,7 @@ export const DataVisualization: React.FC<DataVisualizationProps> = ({ data, feat
         return Object.values(aggregated);
       }
       
-      // For scatter and 3D charts: format the data properly
+      // For scatter and bubble charts: format the data properly
       return data
         .filter(item => item && item[xAxis] !== undefined && 
                 (yAxis === 'count' || item[yAxis] !== undefined))
@@ -308,21 +308,6 @@ export const DataVisualization: React.FC<DataVisualizationProps> = ({ data, feat
       return [];
     }
   }, [data, colorBy, hasValidData]);
-  
-  // Generate color scale for consistent colors
-  const colorScale = useMemo(() => {
-    const colors = [
-      "#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd",
-      "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf"
-    ];
-    
-    const scale: Record<string, string> = {};
-    uniqueColorValues.forEach((val, index) => {
-      scale[val] = colors[index % colors.length];
-    });
-    
-    return scale;
-  }, [uniqueColorValues]);
   
   // Helper function to get color for a category (used in charts)
   const getColorForCategory = (index: number): string => {
@@ -413,19 +398,19 @@ export const DataVisualization: React.FC<DataVisualizationProps> = ({ data, feat
         </CardHeader>
         <CardContent>
           <div className="mb-6">
-            <Tabs defaultValue="bar" onValueChange={(value) => setChartType(value as 'bar' | 'scatter' | '3d')}>
-              <TabsList className="grid w-full grid-cols-3">
+            <Tabs defaultValue="bar" onValueChange={(value) => setChartType(value as 'bar' | 'scatter' | 'bubble')}>
+              <TabsList className="grid w-full grid-cols-3 bg-muted">
                 <TabsTrigger value="bar" className="flex items-center gap-2">
-                  <BarChart2 className="h-4 w-4" />
+                  <BarChart2 className="h-4 w-4 text-muted-foreground dark:text-foreground" />
                   Bar Chart
                 </TabsTrigger>
                 <TabsTrigger value="scatter" className="flex items-center gap-2">
-                  <CircleDot className="h-4 w-4" />
+                  <CircleDot className="h-4 w-4 text-muted-foreground dark:text-foreground" />
                   Scatter Plot
                 </TabsTrigger>
-                <TabsTrigger value="3d" className="flex items-center gap-2">
-                  <Box className="h-4 w-4" />
-                  3D Analysis
+                <TabsTrigger value="bubble" className="flex items-center gap-2">
+                  <Box className="h-4 w-4 text-muted-foreground dark:text-foreground" />
+                  Bubble Chart
                 </TabsTrigger>
               </TabsList>
               
@@ -466,13 +451,13 @@ export const DataVisualization: React.FC<DataVisualizationProps> = ({ data, feat
                   </div>
                 </div>
                 
-                {(chartType === 'scatter' || chartType === '3d') && (
+                {(chartType === 'scatter' || chartType === 'bubble') && (
                   <div className="grid grid-cols-2 gap-4">
-                    {chartType === '3d' && (
+                    {chartType === 'bubble' && (
                       <div>
-                        <Label htmlFor="z-axis">Z-Axis</Label>
+                        <Label htmlFor="z-axis" className="text-foreground">Bubble Size Variable (Z-Axis)</Label>
                         <Select value={zAxis} onValueChange={setZAxis}>
-                          <SelectTrigger id="z-axis">
+                          <SelectTrigger id="z-axis" className="border-muted bg-card text-card-foreground">
                             <SelectValue placeholder="Select Z-Axis" />
                           </SelectTrigger>
                           <SelectContent>
@@ -524,10 +509,23 @@ export const DataVisualization: React.FC<DataVisualizationProps> = ({ data, feat
                     <div className="h-[400px] w-full">
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={chartData}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="name" />
-                          <YAxis />
-                          <Tooltip />
+                          <defs>
+                            <linearGradient id="barColorGradient" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="hsl(var(--accent))" stopOpacity={0.9}/>
+                              <stop offset="95%" stopColor="hsl(var(--accent))" stopOpacity={0.3}/>
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                          <XAxis dataKey="name" className="text-muted-foreground" />
+                          <YAxis className="text-muted-foreground" />
+                          <Tooltip 
+                            contentStyle={{ 
+                              backgroundColor: 'var(--card)', 
+                              borderColor: 'var(--border)',
+                              borderRadius: 'var(--radius)',
+                              color: 'var(--foreground)'
+                            }} 
+                          />
                           <Legend />
                           {colorBy && colorBy !== 'none' && colorBy !== xAxis && uniqueColorValues.length > 0 ? (
                             // If coloring by a separate category, create bars for each category
@@ -537,14 +535,16 @@ export const DataVisualization: React.FC<DataVisualizationProps> = ({ data, feat
                                 dataKey={colorValue}
                                 fill={getColorForCategory(index)}
                                 name={colorValue}
+                                radius={[4, 4, 0, 0]}
                               />
                             ))
                           ) : (
-                            // Otherwise, just show one bar for the y-axis value
+                            // Otherwise, just show one bar with gradient fill
                             <Bar 
                               dataKey={yAxis} 
-                              fill="#8884d8" 
+                              fill="url(#barColorGradient)" 
                               name={yAxis} 
+                              radius={[4, 4, 0, 0]}
                             />
                           )}
                         </BarChart>
@@ -600,22 +600,24 @@ export const DataVisualization: React.FC<DataVisualizationProps> = ({ data, feat
                     </div>
                   </TabsContent>
                   
-                  <TabsContent value="3d" className="mt-4">
+                  <TabsContent value="bubble" className="mt-4">
                     <div className="h-[400px] w-full">
                       <ResponsiveContainer width="100%" height="100%">
                         <ScatterChart>
-                          <CartesianGrid strokeDasharray="3 3" />
+                          <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                           <XAxis 
                             type="number" 
                             dataKey="x" 
                             name={xAxis} 
                             label={{ value: xAxis, position: 'insideBottomRight', offset: -5 }} 
+                            className="text-muted-foreground"
                           />
                           <YAxis 
                             type="number" 
                             dataKey="y" 
                             name={yAxis} 
                             label={{ value: yAxis, angle: -90, position: 'insideLeft' }} 
+                            className="text-muted-foreground"
                           />
                           <ZAxis
                             type="number"
@@ -623,7 +625,15 @@ export const DataVisualization: React.FC<DataVisualizationProps> = ({ data, feat
                             range={[100, 1000]}
                             name={zAxis}
                           />
-                          <Tooltip cursor={{ strokeDasharray: '3 3' }} />
+                          <Tooltip 
+                            cursor={{ strokeDasharray: '3 3' }} 
+                            contentStyle={{ 
+                              backgroundColor: 'var(--card)', 
+                              borderColor: 'var(--border)',
+                              borderRadius: 'var(--radius)',
+                              color: 'var(--foreground)'
+                            }}
+                          />
                           <Legend />
                           
                           {colorBy && colorBy !== 'none' && uniqueColorValues.length > 0 ? (
@@ -632,7 +642,7 @@ export const DataVisualization: React.FC<DataVisualizationProps> = ({ data, feat
                               const filteredData = chartData.filter(item => String(item.color) === colorValue);
                               return filteredData.length > 0 ? (
                                 <Scatter
-                                  key={`scatter3d-${colorValue}`}
+                                  key={`bubble-${colorValue}`}
                                   name={colorValue}
                                   data={filteredData}
                                   fill={getColorForCategory(index)}
@@ -645,7 +655,7 @@ export const DataVisualization: React.FC<DataVisualizationProps> = ({ data, feat
                             <Scatter
                               name={`${xAxis} vs ${yAxis} vs ${zAxis}`}
                               data={chartData}
-                              fill="#8884d8"
+                              fill="hsl(var(--accent))"
                               shape="circle"
                             />
                           )}

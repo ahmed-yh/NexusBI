@@ -78,13 +78,20 @@ interface AnalysisResponse {
 }
 
 // Base URL for API requests
-const API_BASE_URL = 'http://127.0.0.1:5000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000/api';
+
+// Shared axios instance. withCredentials is required so the backend's session cookie
+// (used to scope each visitor's dataset separately) round-trips with every request.
+const apiClient = axios.create({
+  baseURL: API_BASE_URL,
+  withCredentials: true,
+});
 
 // Agent wrappers
 export const webScraperAgent = {
   scrapeUrl: async (url: string, options?: any): Promise<WebScraperResponse> => {
     try {
-      const response = await axios.post(`${API_BASE_URL}/data/web-import`, {
+      const response = await apiClient.post(`/data/web-import`, {
         url,
         scrape_config: options || { table_selector: 'table', use_headers: true }
       });
@@ -105,11 +112,11 @@ export const dataImportAgent = {
       const formData = new FormData();
       formData.append('file', file);
       
-      // Try multiple endpoints to handle potential backend changes
+      // Try the primary endpoint, falling back to the legacy one if the backend hasn't
+      // been updated yet.
       try {
-        // First try the new endpoint structure
         console.log("Attempting upload to new endpoint:", `${API_BASE_URL}/upload`);
-        const response = await axios.post(`${API_BASE_URL}/upload`, formData, {
+        const response = await apiClient.post(`/upload`, formData, {
           headers: {
             'Content-Type': 'multipart/form-data',
           },
@@ -126,38 +133,14 @@ export const dataImportAgent = {
         };
       } catch (mainError) {
         console.error("New upload endpoint failed, trying legacy endpoint:", mainError);
-        
-        // Fall back to the old endpoint structure
-        try {
-          console.log("Attempting upload to legacy endpoint:", `${API_BASE_URL}/data/upload`);
-          const response = await axios.post(`${API_BASE_URL}/data/upload`, formData, {
-            headers: {
-              'Content-Type': 'multipart/form-data',
-            },
-            timeout: 60000
-          });
-          return response.data;
-        } catch (legacyError) {
-          console.error("Legacy upload endpoint failed:", legacyError);
-          
-          // Try direct endpoint without /api prefix as last resort
-          console.log("Attempting upload to direct endpoint: http://127.0.0.1:5000/upload");
-          const response = await axios.post("http://127.0.0.1:5000/upload", formData, {
-            headers: {
-              'Content-Type': 'multipart/form-data',
-            },
-            timeout: 60000
-          });
-          return {
-            success: true,
-            file_info: {
-              filename: file.name,
-              size: file.size,
-              type: file.type
-            },
-            data_preview: response.data.data_preview || []
-          };
-        }
+
+        const response = await apiClient.post(`/data/upload`, formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+          timeout: 60000
+        });
+        return response.data;
       }
     } catch (error: any) {
       console.error('Data import agent error details:', error);
@@ -199,10 +182,10 @@ export const dataImportAgent = {
 };
 
 export const dataProcessorAgent = {
-  processData: async (data: any): Promise<DataProcessorResponse> => {
+  processData: async (data?: any): Promise<DataProcessorResponse> => {
     try {
       console.log('Processing data with new API endpoint');
-      const response = await axios.post(`${API_BASE_URL}/preprocess`, { data });
+      const response = await apiClient.post(`/preprocess`, data ? { data } : {});
       
       return {
         success: true,
@@ -238,7 +221,7 @@ export const dataProcessorAgent = {
 export const datasetManagerAgent = {
   getDatasetInfo: async (): Promise<DatasetManagerResponse> => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/dataset/info`);
+      const response = await apiClient.get(`/dataset/info`);
       
       // Map the API response to our frontend interface format
       if (response.data) {
@@ -283,7 +266,7 @@ export const datasetManagerAgent = {
   
   validateDataset: async (): Promise<DatasetManagerResponse> => {
     try {
-      const response = await axios.post(`${API_BASE_URL}/dataset/validate`);
+      const response = await apiClient.post(`/dataset/validate`);
       if (response.data) {
         return {
           success: true,
@@ -314,10 +297,10 @@ export const datasetManagerAgent = {
 
 // New agent for data analysis using the new /api/analyze endpoint
 export const dataAnalysisAgent = {
-  analyzeData: async (data: any): Promise<AnalysisResponse> => {
+  analyzeData: async (data?: any): Promise<AnalysisResponse> => {
     try {
       console.log('Analyzing data with new API endpoint');
-      const response = await axios.post(`${API_BASE_URL}/analyze`, { data });
+      const response = await apiClient.post(`/analyze`, data ? { data } : {});
       
       return {
         success: true,
@@ -333,23 +316,9 @@ export const dataAnalysisAgent = {
     }
   },
   
-  generateBIReport: async (data: any): Promise<AnalysisResponse> => {
-    try {
-      console.log('Generating BI report with new API endpoint');
-      const response = await axios.post(`${API_BASE_URL}/analyze`, { data });
-      
-      return {
-        success: true,
-        relationships: response.data.relationships || [],
-        report: response.data.report || ''
-      };
-    } catch (error: any) {
-      console.error('BI report generation error:', error);
-      return {
-        success: false,
-        error: error.message || 'Failed to generate BI report'
-      };
-    }
+  generateBIReport: async (data?: any): Promise<AnalysisResponse> => {
+    // Both endpoints call the same analysis logic on the backend
+    return dataAnalysisAgent.analyzeData(data);
   }
 };
 

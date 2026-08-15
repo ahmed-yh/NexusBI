@@ -1,16 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Loader2, Upload, FileSpreadsheet, FileJson, LineChart, Search, BellDot, User, ChevronDown, BarChart2, FileText, Globe, Download, AlertTriangle, ArrowLeft, FileQuestionIcon } from 'lucide-react';
+import { Upload, FileSpreadsheet, Search, BellDot, User, ChevronDown, BarChart2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
-import { DataVisualization } from './components/DataVisualization';
 import { Sidebar } from './components/Sidebar';
-import { DashboardStats } from './components/DashboardStats';
 import { DatasetCard } from './components/DatasetCard';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import { 
-  dataImportAgent, 
+import { DarkModeToggle } from './components/DarkModeToggle';
+import { DashboardPage } from './components/pages/DashboardPage';
+import { AnalysisPage } from './components/pages/AnalysisPage';
+import { ReportsPage } from './components/pages/ReportsPage';
+import { VisualizationPage } from './components/pages/VisualizationPage';
+import {
+  dataImportAgent,
   datasetManagerAgent,
   dataAnalysisAgent
 } from '@/lib/agents';
@@ -190,35 +191,12 @@ const DataSampleTable = ({ data }: { data: any[] }) => {
   );
 };
 
-// Helper function to extract features, handling one-hot encoded columns
-const extractFeatures = (data: any): string[] => {
-  if (!data || !data.length) return [];
-  
-  const allKeys = Object.keys(data[0]);
-  // Identify likely one-hot encoded company names
-  const companyPrefixPattern = /^company_name_/;
-  const companyFeatures = allKeys.filter(key => companyPrefixPattern.test(key));
-  
-  // Extract the actual feature names (excluding one-hot encoded features)
-  const regularFeatures = allKeys.filter(key => !companyPrefixPattern.test(key));
-  
-  // If we have many company name features, group them
-  if (companyFeatures.length > 5) {
-    return [
-      ...regularFeatures,
-      'company_name (one-hot encoded)'
-    ];
-  }
-  
-  return allKeys;
-};
-
 function App() {
   const [currentPage, setCurrentPage] = useState(() => {
     // Try to load from URL or localStorage to persist state
     const urlParams = new URLSearchParams(window.location.search);
     const pageParam = urlParams.get('page');
-    if (pageParam && ['dashboard', 'upload', 'web-import', 'analysis', 'reports', 'json-export', 'visualization'].includes(pageParam)) {
+    if (pageParam && ['dashboard', 'upload', 'analysis', 'reports', 'visualization'].includes(pageParam)) {
       return pageParam;
     }
     return 'dashboard';
@@ -447,34 +425,6 @@ function App() {
     }
   };
 
-  // Handle JSON export
-  const handleJsonExport = () => {
-    if (!datasetInfo) {
-      toast.error('No dataset available to export');
-      return;
-    }
-
-    try {
-      // Create a JSON blob and download it
-      const jsonData = JSON.stringify(datasetInfo, null, 2);
-      const blob = new Blob([jsonData], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'nexusbi_export.json';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      
-      toast.success('JSON data exported successfully');
-    } catch (error) {
-      toast.error('Failed to export JSON data');
-      console.error('JSON export error:', error);
-    }
-  };
-
   // Handle page change
   const handlePageChange = (page: string) => {
     console.log("Page change requested to:", page, "Current page:", currentPage);
@@ -533,194 +483,15 @@ function App() {
     switch (currentPage) {
       case 'dashboard':
         return (
-          <>
-            <div className="flex justify-between items-center mb-8">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <BarChart2 className="h-5 w-5 text-accent" />
-                  <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-                </div>
-                <p className="text-muted-foreground">
-                  Analyze and visualize your data with AI-powered insights
-                </p>
-              </div>
-              
-              <Button 
-                className="gap-2 bg-accent hover:bg-accent/90"
-                onClick={() => handlePageChange('upload')}
-                disabled={isLoading}
-              >
-                <Upload className="h-4 w-4" />
-                Upload Dataset
-              </Button>
-            </div>
-
-            <DashboardStats />
-
-            <div className="mt-10">
-              <div className="flex items-center justify-between mb-5">
-                <h2 className="text-xl font-semibold">Recent Datasets</h2>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="gap-1"
-                  onClick={() => handleRunAnalysis()}
-                  disabled={!datasetInfo || isLoading}
-                >
-                  <Upload className="h-3.5 w-3.5" />
-                  Run Analysis
-                </Button>
-              </div>
-              <div className="grid gap-5 md:grid-cols-3">
-                {datasetInfo ? (
-                  <>
-                    <DatasetCard
-                      key="current-dataset"
-                      name={datasetInfo.filename || "Current Dataset"}
-                      size={datasetInfo.size || (datasetInfo.rows || 0) * 100} // Estimate size if not provided
-                      type={datasetInfo.filename?.split('.').pop() || 'csv'}
-                      status="ready"
-                      uploadedAt={new Date()}
-                      onClick={() => handleRunAnalysis()}
-                    />
-                    
-                    {/* Show dataset overview */}
-                    <div className="col-span-2">
-                      <Card>
-                        <CardHeader>
-                          <CardTitle>Dataset Overview</CardTitle>
-                          <CardDescription>
-                            Summary information about the current dataset
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <h3 className="text-sm font-medium text-muted-foreground mb-2">Statistics</h3>
-                              <dl className="space-y-2">
-                                <div className="flex justify-between">
-                                  <dt className="text-sm">Rows:</dt>
-                                  <dd className="text-sm font-medium">{datasetInfo.rows || 0}</dd>
-                                </div>
-                                <div className="flex justify-between">
-                                  <dt className="text-sm">Columns:</dt>
-                                  <dd className="text-sm font-medium">{datasetInfo.actual_columns || datasetInfo.features?.length || 0}</dd>
-                                </div>
-                                <div className="flex justify-between">
-                                  <dt className="text-sm">File Type:</dt>
-                                  <dd className="text-sm font-medium">{(datasetInfo.filename || "").split('.').pop()?.toUpperCase() || "CSV"}</dd>
-                                </div>
-                              </dl>
-                            </div>
-                            
-                            <div>
-                              <h3 className="text-sm font-medium text-muted-foreground mb-2">Features</h3>
-                              <div className="max-h-32 overflow-y-auto">
-                                <ul className="space-y-1">
-                                  {datasetInfo.features?.map((column: string, index: number) => (
-                                    <li key={index} className="text-sm">{column}</li>
-                                  ))}
-                                </ul>
-                              </div>
-                            </div>
-                          </div>
-                          
-                          {/* Show data sample if available */}
-                          {datasetInfo.data_sample && datasetInfo.data_sample.length > 0 && (
-                            <div className="mt-6">
-                              <h3 className="text-sm font-medium text-muted-foreground mb-2">Data Sample</h3>
-                              <div className="overflow-x-auto border rounded-md">
-                                <DataSampleTable data={datasetInfo.data_sample} />
-                              </div>
-                            </div>
-                          )}
-                        </CardContent>
-                        <CardFooter>
-                          <Button 
-                            variant="default" 
-                            size="sm" 
-                            className="gap-1 w-full"
-                            onClick={() => handleRunAnalysis()}
-                            disabled={isLoading}
-                          >
-                            <BarChart2 className="h-3.5 w-3.5" />
-                            Analyze Data
-                          </Button>
-                        </CardFooter>
-                      </Card>
-                    </div>
-                  </>
-                ) : (
-                  <div className="col-span-3">
-                    <Card className="bg-slate-50 border-dashed border-2 border-slate-200">
-                      <CardContent className="flex flex-col items-center justify-center py-10">
-                        <FileSpreadsheet className="h-12 w-12 text-slate-400 mb-4" />
-                        <CardTitle className="text-center mb-2">No Dataset Available</CardTitle>
-                        <CardDescription className="text-center mb-6">
-                          Upload a dataset to begin your data analysis
-                        </CardDescription>
-                        <Button 
-                          onClick={() => handlePageChange('upload')}
-                          className="gap-2"
-                        >
-                          <Upload className="h-4 w-4" />
-                          Upload Dataset
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  </div>
-                )}
-              </div>
-            </div>
-          </>
+          <DashboardPage
+            datasetInfo={datasetInfo}
+            isLoading={isLoading}
+            onPageChange={handlePageChange}
+            onRunAnalysis={handleRunAnalysis}
+            DataSampleTable={DataSampleTable}
+          />
         );
-      
-      case 'web-import':
-        return (
-          <>
-            <div className="flex justify-between items-center mb-8">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <Globe className="h-5 w-5 text-accent" />
-                  <h1 className="text-3xl font-bold tracking-tight">Web Data Import</h1>
-                </div>
-                <p className="text-muted-foreground">
-                  Import data directly from websites, APIs, or online datasets
-                </p>
-              </div>
-            </div>
 
-            <Card className="w-full border-amber-200 bg-amber-50">
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <AlertTriangle className="h-5 w-5 text-amber-500" />
-                  <CardTitle>Coming Soon</CardTitle>
-                </div>
-                <CardDescription>
-                  Web data importing capability is under development and will be available in a future update.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  We're working on enhancing our web data import capabilities to provide you with:
-                </p>
-                <ul className="list-disc list-inside mt-2 space-y-1 text-sm text-muted-foreground">
-                  <li>Direct imports from CSV endpoints</li>
-                  <li>Web scraping functionality for structured data</li>
-                  <li>API connectors for popular data sources</li>
-                  <li>Automated data cleaning for web-imported data</li>
-                </ul>
-              </CardContent>
-              <CardFooter>
-                <Button variant="outline" onClick={() => setCurrentPage('upload')}>
-                  <Upload className="mr-2 h-4 w-4" />
-                  Upload File Instead
-                </Button>
-              </CardFooter>
-            </Card>
-          </>
-        );
-      
       case 'upload':
         return (
           <>
@@ -734,8 +505,8 @@ function App() {
                   Upload your data files for analysis
                 </p>
               </div>
-              
-              <Button 
+
+              <Button
                 className="gap-2 bg-accent hover:bg-accent/90"
                 onClick={() => handlePageChange('upload')}
                 disabled={isLoading}
@@ -756,7 +527,7 @@ function App() {
                   uploadedAt={new Date()}
                   onClick={() => handleRunAnalysis()}
                 />
-                
+
                 {/* Show dataset overview */}
                 <div className="col-span-2">
                   <Card>
@@ -785,7 +556,7 @@ function App() {
                             </div>
                           </dl>
                         </div>
-                        
+
                         <div>
                           <h3 className="text-sm font-medium text-muted-foreground mb-2">Features</h3>
                           <div className="max-h-32 overflow-y-auto">
@@ -797,7 +568,7 @@ function App() {
                           </div>
                         </div>
                       </div>
-                      
+
                       {/* Show data sample if available */}
                       {datasetInfo.data_sample && datasetInfo.data_sample.length > 0 && (
                         <div className="mt-6">
@@ -809,9 +580,9 @@ function App() {
                       )}
                     </CardContent>
                     <CardFooter>
-                      <Button 
-                        variant="default" 
-                        size="sm" 
+                      <Button
+                        variant="default"
+                        size="sm"
                         className="gap-1 w-full"
                         onClick={() => handleRunAnalysis()}
                         disabled={isLoading}
@@ -832,7 +603,7 @@ function App() {
                     <CardDescription className="text-center mb-6">
                       Upload a dataset to begin your data analysis
                     </CardDescription>
-                    <Button 
+                    <Button
                       onClick={() => handlePageChange('upload')}
                       className="gap-2"
                     >
@@ -845,493 +616,40 @@ function App() {
             )}
           </>
         );
-      
+
       case 'analysis':
         return (
-          <>
-            <div className="flex justify-between items-center mb-8">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <BarChart2 className="h-5 w-5 text-accent" />
-                  <h1 className="text-3xl font-bold tracking-tight">Data Analysis</h1>
-                </div>
-                <p className="text-muted-foreground">
-                  Analyze data and identify patterns, trends, and insights
-                </p>
-              </div>
-              
-              <Button 
-                className="gap-2 bg-accent hover:bg-accent/90"
-                onClick={handleRunAnalysis}
-                disabled={!datasetInfo || isLoading}
-              >
-                <BarChart2 className="h-4 w-4" />
-                Run Analysis
-              </Button>
-            </div>
-
-            {isLoading ? (
-              <div className="flex items-center justify-center h-40 flex-col">
-                <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-                <p className="text-lg font-medium">Analyzing data...</p>
-                <p className="text-sm text-muted-foreground mt-2">This may take a minute or two</p>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Analysis Options</CardTitle>
-                    <CardDescription>
-                      Select the types of analysis to perform on your data
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid gap-6 grid-cols-2">
-                      <div className="border rounded-lg p-4 hover:border-primary hover:bg-primary/5 cursor-pointer transition-colors">
-                        <div className="flex items-center gap-2 mb-2">
-                          <ChevronDown className="h-5 w-5 text-primary" />
-                          <h3 className="font-medium">Trend Analysis</h3>
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          Identify key trends and patterns in your data
-                        </p>
-                      </div>
-                      
-                      <div className="border rounded-lg p-4 hover:border-primary hover:bg-primary/5 cursor-pointer transition-colors">
-                        <div className="flex items-center gap-2 mb-2">
-                          <ChevronDown className="h-5 w-5 text-primary" />
-                          <h3 className="font-medium">Correlation Analysis</h3>
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          Find relationships between different data factors
-                        </p>
-                      </div>
-                      
-                      <div className="border rounded-lg p-4 hover:border-primary hover:bg-primary/5 cursor-pointer transition-colors">
-                        <div className="flex items-center gap-2 mb-2">
-                          <ChevronDown className="h-5 w-5 text-primary" />
-                          <h3 className="font-medium">Predictive Modeling</h3>
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          Forecast future trends based on historical data
-                        </p>
-                      </div>
-                      
-                      <div className="border rounded-lg p-4 hover:border-primary hover:bg-primary/5 cursor-pointer transition-colors">
-                        <div className="flex items-center gap-2 mb-2">
-                          <ChevronDown className="h-5 w-5 text-primary" />
-                          <h3 className="font-medium">Segment Analysis</h3>
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          Identify key data segments and their characteristics
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                  <CardFooter className="justify-end">
-                    <Button
-                      onClick={handleRunAnalysis}
-                      disabled={!datasetInfo || isLoading}
-                    >
-                      Run Data Analysis
-                    </Button>
-                  </CardFooter>
-                </Card>
-
-                {analysisResults && (
-                  <>
-                    {/* Feature Relationships Card */}
-                    {analysisResults.relationships && analysisResults.relationships.length > 0 && (
-                      <Card>
-                        <CardHeader>
-                          <CardTitle>Feature Relationships</CardTitle>
-                          <CardDescription>
-                            Key relationships identified between features
-                            {analysisResults.analyzed_at && (
-                              <span className="block mt-1 text-xs">
-                                Analysis completed on {new Date(analysisResults.analyzed_at).toLocaleString()}
-                              </span>
-                            )}
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent className="p-0">
-                          <div className="overflow-x-auto">
-                            <table className="w-full border-collapse">
-                              <thead>
-                                <tr className="bg-muted">
-                                  <th className="p-3 text-left font-medium text-muted-foreground border">Feature 1</th>
-                                  <th className="p-3 text-left font-medium text-muted-foreground border">Feature 2</th>
-                                  <th className="p-3 text-left font-medium text-muted-foreground border">Type</th>
-                                  <th className="p-3 text-left font-medium text-muted-foreground border">Description</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {analysisResults.relationships.map((rel: any, i: number) => (
-                                  <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-muted/30'}>
-                                    <td className="p-3 border">{rel.feature1}</td>
-                                    <td className="p-3 border">{rel.feature2}</td>
-                                    <td className="p-3 border">{rel.type}</td>
-                                    <td className="p-3 border">{rel.description}</td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    )}
-
-                    {/* BI Report Preview Card */}
-                    {analysisResults.report && (
-                      <Card>
-                        <CardHeader>
-                          <CardTitle>BI Report Preview</CardTitle>
-                          <CardDescription>
-                            Preview of the business intelligence report
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent className="max-h-96 overflow-y-auto">
-                          <div className="bg-white p-4 border rounded prose max-w-none">
-                            {analysisResults.report && (
-                              <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                {String(analysisResults.report).length > 500 ? 
-                                  String(analysisResults.report).slice(0, 500) + '...' : 
-                                  String(analysisResults.report)}
-                              </ReactMarkdown>
-                            )}
-                          </div>
-                        </CardContent>
-                        <CardFooter>
-                          <Button 
-                            onClick={() => setCurrentPage('reports')}
-                            className="w-full"
-                          >
-                            <FileText className="mr-2 h-4 w-4" />
-                            View Full Report
-                          </Button>
-                        </CardFooter>
-                      </Card>
-                    )}
-
-                    {/* Column Statistics */}
-                    {analysisResults.column_stats && Object.keys(analysisResults.column_stats).length > 0 && (
-                      <Card>
-                        <CardHeader>
-                          <CardTitle>Column Statistics</CardTitle>
-                          <CardDescription>
-                            Statistical summary of numerical columns
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent className="p-0">
-                          <div className="overflow-x-auto">
-                            <table className="w-full border-collapse">
-                              <thead>
-                                <tr className="bg-muted">
-                                  <th className="p-2 text-left text-xs font-medium text-muted-foreground border">Column</th>
-                                  <th className="p-2 text-left text-xs font-medium text-muted-foreground border">Min</th>
-                                  <th className="p-2 text-left text-xs font-medium text-muted-foreground border">Max</th>
-                                  <th className="p-2 text-left text-xs font-medium text-muted-foreground border">Mean</th>
-                                  <th className="p-2 text-left text-xs font-medium text-muted-foreground border">Median</th>
-                                  <th className="p-2 text-left text-xs font-medium text-muted-foreground border">Std Dev</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {Object.entries(analysisResults.column_stats || {}).map(([column, stats]: [string, any], i: number) => (
-                                  <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-muted/30'}>
-                                    <td className="p-2 text-xs border font-medium">{column}</td>
-                                    <td className="p-2 text-xs border">{stats.min?.toFixed(2) || 'N/A'}</td>
-                                    <td className="p-2 text-xs border">{stats.max?.toFixed(2) || 'N/A'}</td>
-                                    <td className="p-2 text-xs border">{stats.mean?.toFixed(2) || 'N/A'}</td>
-                                    <td className="p-2 text-xs border">{stats.median?.toFixed(2) || 'N/A'}</td>
-                                    <td className="p-2 text-xs border">{stats.std?.toFixed(2) || 'N/A'}</td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    )}
-
-                    <Card>
-                      <CardFooter className="justify-between pt-6">
-                        <Button
-                          variant="outline"
-                          onClick={() => setCurrentPage('analysis')}
-                        >
-                          <ArrowLeft className="mr-2 h-4 w-4" />
-                          Back to Dashboard
-                        </Button>
-                        <Button
-                          onClick={handleGenerateBIReport}
-                          disabled={isLoading}
-                        >
-                          Generate BI Report
-                        </Button>
-                      </CardFooter>
-                    </Card>
-                  </>
-                )}
-              </div>
-            )}
-          </>
+          <AnalysisPage
+            datasetInfo={datasetInfo}
+            analysisResults={analysisResults}
+            isLoading={isLoading}
+            onRunAnalysis={handleRunAnalysis}
+            onGenerateBIReport={handleGenerateBIReport}
+            onPageChange={handlePageChange}
+          />
         );
-      
+
       case 'reports':
         return (
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold tracking-tight">
-                BI Report Generator
-              </h2>
-              <Button
-                onClick={handleGenerateBIReport}
-                disabled={isLoading}
-              >
-                <Upload className="mr-2 h-4 w-4" />
-                Generate New Report
-              </Button>
-            </div>
-            
-            {isLoading ? (
-              <div className="flex flex-col items-center p-12">
-                <Loader2 className="w-12 h-12 animate-spin mb-4 text-primary" />
-                <p className="text-lg font-medium">Generating BI Report...</p>
-                <p className="text-sm text-muted-foreground mt-2">
-                  This may take a moment. We're analyzing your data and creating a comprehensive report.
-                </p>
-              </div>
-            ) : (
-              <>
-                {analysisResults && analysisResults.report ? (
-                  <Card className="w-full">
-                    <CardHeader>
-                      <CardTitle className="flex justify-between items-center">
-                        <span>Business Intelligence Report</span>
-                        <span className="text-sm font-normal text-muted-foreground">
-                          {analysisResults.analyzed_at && 
-                            `Generated ${new Date(analysisResults.analyzed_at).toLocaleString()}`
-                          }
-                        </span>
-                      </CardTitle>
-                      <CardDescription>
-                        Based on the dataset: {datasetInfo?.filename || 'Unknown dataset'}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="bg-card-muted rounded-md p-4 overflow-auto max-h-[800px] prose max-w-none">
-                        {analysisResults.report && (
-                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                            {String(analysisResults.report)}
-                          </ReactMarkdown>
-                        )}
-                      </div>
-                    </CardContent>
-                    <CardFooter className="justify-between flex-wrap gap-2">
-                      <Button 
-                        variant="outline"
-                        onClick={() => setCurrentPage('analysis')}
-                      >
-                        <ArrowLeft className="mr-2 h-4 w-4" />
-                        Back to Analysis
-                      </Button>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          disabled={!analysisResults.report}
-                          onClick={() => {
-                            if (analysisResults.report) {
-                              // Save the original Markdown content
-                              const blob = new Blob([String(analysisResults.report)], { type: 'text/markdown' });
-                              const url = URL.createObjectURL(blob);
-                              const a = document.createElement('a');
-                              a.href = url;
-                              a.download = `nexusbi-report-${new Date().toISOString().slice(0, 10)}.md`;
-                              document.body.appendChild(a);
-                              a.click();
-                              document.body.removeChild(a);
-                              URL.revokeObjectURL(url);
-                            }
-                          }}
-                        >
-                          <Download className="mr-2 h-4 w-4" />
-                          Download Report
-                        </Button>
-                      </div>
-                    </CardFooter>
-                  </Card>
-                ) : (
-                  <Card className="w-full">
-                    <CardContent className="flex flex-col items-center justify-center py-12">
-                      <div className="rounded-full bg-muted p-4 mb-4">
-                        <FileQuestionIcon className="h-8 w-8 text-muted-foreground" />
-                      </div>
-                      <h3 className="text-xl font-medium mb-2">No Reports Generated Yet</h3>
-                      <p className="text-center text-muted-foreground mb-6">
-                        Generate a report from the analysis page to see the results here.
-                      </p>
-                      <Button 
-                        onClick={() => setCurrentPage('analysis')}
-                        className="w-1/2 mx-auto"
-                      >
-                        <ArrowLeft className="mr-2 h-4 w-4" />
-                        Go to Analysis
-                      </Button>
-                    </CardContent>
-                  </Card>
-                )}
-              </>
-            )}
-          </div>
+          <ReportsPage
+            datasetInfo={datasetInfo}
+            analysisResults={analysisResults}
+            isLoading={isLoading}
+            onGenerateBIReport={handleGenerateBIReport}
+            onPageChange={handlePageChange}
+          />
         );
-      
+
       case 'visualization':
-        console.log("Rendering visualization with datasetInfo:", datasetInfo ? 
-          `Data sample: ${datasetInfo.data_sample?.length || 0} rows, Features: ${datasetInfo.features?.length || 0}` : 
-          "No dataset info");
-          
         return (
-          <>
-            <div className="flex justify-between items-center mb-8">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <LineChart className="h-5 w-5 text-accent" />
-                  <h1 className="text-3xl font-bold tracking-tight">Data Visualization</h1>
-                </div>
-                <p className="text-muted-foreground">
-                  Create interactive charts and visualizations from your dataset
-                </p>
-              </div>
-              
-              <Button 
-                className="gap-2 bg-accent hover:bg-accent/90"
-                onClick={() => handlePageChange('upload')}
-                disabled={isLoading}
-              >
-                <Upload className="h-4 w-4" />
-                Upload New Dataset
-              </Button>
-            </div>
-            
-            {isLoading ? (
-              <div className="flex items-center justify-center h-40 flex-col">
-                <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-                <p className="text-lg font-medium">Loading data...</p>
-                <p className="text-sm text-muted-foreground mt-2">Preparing your data for visualization</p>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                {datasetInfo && datasetInfo.data_sample && datasetInfo.data_sample.length > 0 ? (
-                  <>
-                    <Card className="p-4 bg-blue-50 border-blue-200">
-                      <div className="flex items-start gap-4">
-                        <div className="bg-blue-100 p-2 rounded-full">
-                          <FileSpreadsheet className="h-5 w-5 text-blue-700" />
-                        </div>
-                        <div>
-                          <h3 className="font-medium mb-1">Dataset: {datasetInfo.filename || "Unknown"}</h3>
-                          <p className="text-sm text-muted-foreground">
-                            {datasetInfo.rows || 0} rows, {datasetInfo.features?.length || 0} features
-                          </p>
-                        </div>
-                      </div>
-                    </Card>
-                    
-                    {/* Use try-catch to prevent crashes */}
-                    {(() => {
-                      try {
-                        console.log("About to render DataVisualization component");
-                        return (
-                          <DataVisualization 
-                            data={datasetInfo.data_sample} 
-                            features={Array.isArray(datasetInfo.features) ? datasetInfo.features : []} 
-                          />
-                        );
-                      } catch (error) {
-                        console.error("Error rendering DataVisualization:", error);
-                        return (
-                          <Card className="w-full">
-                            <CardHeader>
-                              <CardTitle className="flex items-center gap-2">
-                                <AlertTriangle className="h-5 w-5 text-amber-500" />
-                                <span>Visualization Error</span>
-                              </CardTitle>
-                              <CardDescription>
-                                There was a problem rendering the visualization component
-                              </CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                              <p className="text-muted-foreground">
-                                {error instanceof Error ? error.message : "Unknown error"}
-                              </p>
-                            </CardContent>
-                          </Card>
-                        );
-                      }
-                    })()}
-                  </>
-                ) : (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>No Data Sample Available</CardTitle>
-                      <CardDescription>
-                        A data sample is needed to create visualizations
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-muted-foreground mb-4">
-                        We could not find valid data to visualize. Try one of these options:
-                      </p>
-                      
-                      <div className="grid grid-cols-2 gap-4 mt-6">
-                        <Card className="p-4 cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => handlePageChange('upload')}>
-                          <div className="flex flex-col items-center">
-                            <Upload className="h-8 w-8 text-primary mb-2" />
-                            <h3 className="font-medium mb-1">Upload Dataset</h3>
-                            <p className="text-xs text-center text-muted-foreground">Upload your own CSV or Excel file</p>
-                          </div>
-                        </Card>
-                        
-                        <Card className="p-4 cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => {
-                          // Create a sample dataset for testing visualization
-                          console.log("Loading sample dataset for visualization");
-                          const sampleData = Array(100).fill(null).map((_, i) => ({
-                            id: i,
-                            age: Math.floor(Math.random() * 80) + 15,
-                            income: Math.floor(Math.random() * 150000) + 20000,
-                            education: ['High School', 'Bachelors', 'Masters', 'PhD'][Math.floor(Math.random() * 4)],
-                            gender: Math.random() > 0.5 ? 'Female' : 'Male',
-                            satisfaction: Math.floor(Math.random() * 10) + 1
-                          }));
-                          
-                          setDatasetInfo({
-                            ...datasetInfo, 
-                            filename: "Sample Dataset.csv",
-                            size: 10240,
-                            data_sample: sampleData,
-                            rows: sampleData.length,
-                            columns: Object.keys(sampleData[0]).length,
-                            actual_columns: Object.keys(sampleData[0]).length,
-                            features: Object.keys(sampleData[0]),
-                            status: 'ready',
-                            uploadedAt: new Date()
-                          });
-                          toast.success("Sample dataset loaded for visualization");
-                        }}>
-                          <div className="flex flex-col items-center">
-                            <FileSpreadsheet className="h-8 w-8 text-primary mb-2" />
-                            <h3 className="font-medium mb-1">Use Sample Data</h3>
-                            <p className="text-xs text-center text-muted-foreground">Try visualization with our sample dataset</p>
-                          </div>
-                        </Card>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-            )}
-          </>
+          <VisualizationPage
+            datasetInfo={datasetInfo}
+            isLoading={isLoading}
+            onPageChange={handlePageChange}
+            onSetDatasetInfo={(info) => setDatasetInfo(info as DatasetInfo)}
+          />
         );
+
       
       default:
         return (
@@ -1365,6 +683,7 @@ function App() {
             </div>
             
             <div className="flex items-center gap-4">
+              <DarkModeToggle />
               <Button variant="outline" size="icon" className="rounded-full relative">
                 <BellDot className="h-5 w-5" />
                 <span className="absolute -top-1 -right-1 w-2 h-2 bg-accent rounded-full" />

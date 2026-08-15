@@ -444,10 +444,15 @@ class MarketAnalysisApp:
             # Create prompt and get response
             prompt = self._create_relationship_prompt(features_description)
             logger.info(f"Sending prompt to model")
-            
-            # Get AI response
+
+            # Get AI response. Lower temperature here (vs. the report's free-form generation)
+            # since parsing depends on the model strictly following the "A | B | Type | Desc"
+            # format - a lower temperature makes it far less likely to drift from that.
             chat = self.model.start_chat(history=[])
-            response = chat.send_message(prompt)
+            response = chat.send_message(
+                prompt,
+                generation_config={**self.generation_config, "temperature": 0.2}
+            )
             
             if not response or not response.text:
                 logger.error("Received empty response from model")
@@ -651,14 +656,26 @@ Please provide at least 3-5 important relationships you find in the data. Return
         
         #console.print(table)
 
-    def _create_bi_report_prompt(self, features_description: str) -> str:
+    def _create_bi_report_prompt(self, features_description: str, relationships: Optional[List[Dict[str, Any]]] = None) -> str:
         """Create prompt for AI to generate a comprehensive BI report"""
         sample_data = self.dataset_manager.data.head().to_string()
-        
+
+        if relationships:
+            relationships_text = "\n".join(
+                f"- {rel['feature1']} ↔ {rel['feature2']} ({rel['type']}): {rel['description']}"
+                for rel in relationships
+            )
+        else:
+            relationships_text = "No significant feature relationships were identified."
+
         return f"""You are a senior Business Intelligence analyst creating a comprehensive report. Using the dataset information below, generate a well-structured BI report.
 
 Sample Data:
 {sample_data}
+
+Already-identified feature relationships (base the "Relationship Analysis" section on these -
+do not invent different relationships):
+{relationships_text}
 
 Please generate a complete BI report in the following Markdown format:
 
@@ -680,7 +697,7 @@ Please generate a complete BI report in the following Markdown format:
 [For each important feature, provide detailed analysis]
 
 ## Relationship Analysis
-[Previous analysis will be inserted here]
+[Expand on the feature relationships listed above]
 
 ## Market Trends
 [Identify and describe key trends]
@@ -709,8 +726,13 @@ The following charts will be generated separately:
 
 Generate ONLY the report content following this structure exactly. The [CHARTS_PLACEHOLDER] section will be populated with actual visualizations later."""
 
-    def generate_bi_report(self) -> str:
-        """Generate a comprehensive BI report (with caching)"""
+    def generate_bi_report(self, relationships: Optional[List[Dict[str, Any]]] = None) -> str:
+        """Generate a comprehensive BI report (with caching)
+
+        relationships: the already-computed feature relationships (from
+        analyze_feature_relationships), so the report's "Relationship Analysis" section is
+        grounded in the same analysis instead of the model re-guessing from scratch.
+        """
         try:
             # Check cache first
             cached_report = AnalysisCache.load_report(self.dataset_manager.file_path)
@@ -718,14 +740,19 @@ Generate ONLY the report content following this structure exactly. The [CHARTS_P
                 logger.info("✅ Loaded BI report from cache (skipping API call)")
                 console.print("[green]✅ Loaded BI report from cache (skipping API call)[/green]")
                 return cached_report
-            
+
             # Get feature description
             features_description = self._get_features_description(self.dataset_manager.data)
-            
+
             # Create and send prompt
-            prompt = self._create_bi_report_prompt(features_description)
+            prompt = self._create_bi_report_prompt(features_description, relationships)
             chat = self.model.start_chat(history=[])
-            response = chat.send_message(prompt)
+            # The report template has 10+ sections - give it more room than the default
+            # max_output_tokens so longer reports don't get cut off mid-section.
+            response = chat.send_message(
+                prompt,
+                generation_config={**self.generation_config, "max_output_tokens": 4096}
+            )
             
             if not response or not response.text:
                 logger.error("Received empty response for BI report")
@@ -802,9 +829,9 @@ Generate ONLY the report content following this structure exactly. The [CHARTS_P
         relationships = self.analyze_feature_relationships()
         self.display_results(relationships)
         
-        # Generate BI report
+        # Generate BI report, grounded in the relationships already computed above
         console.print("\n[bold blue]Generating BI Report...[/bold blue]")
-        report = self.generate_bi_report()
+        report = self.generate_bi_report(relationships)
         
         # Display report in console
         console.print("\n[bold green]BI Report Generated[/bold green]")

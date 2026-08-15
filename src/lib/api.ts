@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Base URL for API requests
-const API_BASE_URL = 'http://127.0.0.1:5000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000/api';
 
 // Alternative URLs to try if main URL fails
 const ALTERNATIVE_URLS = [
@@ -15,7 +15,7 @@ const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  withCredentials: false, // Try without credentials first
+  withCredentials: true, // Required so the backend's per-visitor session cookie round-trips
   timeout: 30000, // Increased timeout for larger file uploads
 });
 

@@ -53,7 +53,7 @@ const StatsCard: FC<StatsCardProps> = ({
   };
 
   return (
-    <Card className={cn("border overflow-hidden", colorStyles[color].border)}>
+    <Card className={cn("border overflow-hidden", colorStyles[color].border, isLoading && "animate-pulse")}>
       <div className={cn("h-1", 
         color === 'default' ? 'bg-primary' : 
         color === 'blue' ? 'bg-accent' : 
@@ -94,12 +94,20 @@ const StatsCard: FC<StatsCardProps> = ({
 
 export const DashboardStats: FC = () => {
   const [stats, setStats] = useState({
-    totalDatasets: 0,
-    processedFiles: 0,
-    pendingAnalysis: 0,
+    rows: 0,
+    columns: 0,
+    memory: '0 Bytes',
     isLoading: true
   });
   const [noDataAvailable, setNoDataAvailable] = useState(false);
+
+  const formatBytes = (bytes: number): string => {
+    if (!bytes || bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  };
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -110,29 +118,28 @@ export const DashboardStats: FC = () => {
         if (datasetInfo.success && datasetInfo.dataset_info) {
           // Extract stats from dataset info
           setStats({
-            totalDatasets: datasetInfo.dataset_info.columns || 0,
-            processedFiles: 1, // Assuming one file is processed
-            pendingAnalysis: 0, // No pending analysis in this case
+            rows: datasetInfo.dataset_info.rows || 0,
+            columns: datasetInfo.dataset_info.columns || 0,
+            memory: formatBytes(datasetInfo.dataset_info.size || 0),
             isLoading: false
           });
           setNoDataAvailable(false);
         } else {
           // No data available
           setStats({
-            totalDatasets: 0,
-            processedFiles: 0,
-            pendingAnalysis: 0,
+            rows: 0,
+            columns: 0,
+            memory: '0 Bytes',
             isLoading: false
           });
           setNoDataAvailable(true);
         }
       } catch (error) {
         console.error('Error fetching stats:', error);
-        // In case of error, use sample data
         setStats({
-          totalDatasets: 0,
-          processedFiles: 0,
-          pendingAnalysis: 0,
+          rows: 0,
+          columns: 0,
+          memory: '0 Bytes',
           isLoading: false
         });
         setNoDataAvailable(true);
@@ -145,9 +152,9 @@ export const DashboardStats: FC = () => {
   if (noDataAvailable) {
     return (
       <div className="grid gap-4 md:grid-cols-1">
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-6 text-center">
+        <div className="bg-amber-50/50 border border-amber-200/50 dark:bg-amber-950/20 dark:border-amber-900/30 rounded-lg p-6 text-center">
           <FileSpreadsheet className="h-12 w-12 text-amber-500 mx-auto mb-4" />
-          <h3 className="text-lg font-medium mb-2">No Dataset Available</h3>
+          <h3 className="text-lg font-medium mb-2 text-foreground">No Dataset Available</h3>
           <p className="text-sm text-muted-foreground mb-4">
             Upload a dataset using the "Upload Dataset" button above to get started.
           </p>
@@ -162,29 +169,26 @@ export const DashboardStats: FC = () => {
   return (
     <div className="grid gap-4 md:grid-cols-3">
       <StatsCard
-        title="Total Datasets"
-        value={stats.isLoading ? "..." : stats.totalDatasets}
-        description="Active datasets in analysis"
+        title="Total Rows"
+        value={stats.isLoading ? "..." : stats.rows.toLocaleString()}
+        description="Dataset records loaded"
         icon={Database}
-        trend={8}
         color="blue"
         isLoading={stats.isLoading}
       />
       <StatsCard
-        title="Processed Files"
-        value={stats.isLoading ? "..." : stats.processedFiles}
-        description="Successfully processed"
+        title="Total Columns"
+        value={stats.isLoading ? "..." : stats.columns}
+        description="Features available"
         icon={FileSpreadsheet}
-        trend={15}
         color="green"
         isLoading={stats.isLoading}
       />
       <StatsCard
-        title="Pending Analysis"
-        value={stats.isLoading ? "..." : stats.pendingAnalysis}
-        description="Awaiting processing"
+        title="Memory Footprint"
+        value={stats.isLoading ? "..." : stats.memory}
+        description="Allocated data size"
         icon={Clock}
-        trend={-5}
         color="amber"
         isLoading={stats.isLoading}
       />

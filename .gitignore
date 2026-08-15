@@ -39,3 +39,8 @@ env/
 msb_hackathon/msb/Lib/
 flask_session/
 node_modules/
+
+# Generated / cache artifacts
+cache/
+graphify-out/
+tsconfig.*.tsbuildinfo
