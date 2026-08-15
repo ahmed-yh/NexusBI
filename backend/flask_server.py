@@ -16,6 +16,17 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', os.urandom(24))
 
+# The frontend (Netlify) and backend (Render) live on different domains, so the session
+# cookie is sent cross-site. Browsers only allow that when the cookie is SameSite=None
+# and Secure - the Flask default (SameSite=Lax) gets silently dropped on cross-site
+# requests, which looks like "no session ever persists" from the frontend's perspective.
+# Secure cookies require HTTPS, so this is only enabled outside local dev.
+is_production = os.environ.get('RENDER') == 'true' or os.environ.get('SESSION_COOKIE_SECURE') == '1'
+app.config.update(
+    SESSION_COOKIE_SAMESITE='None' if is_production else 'Lax',
+    SESSION_COOKIE_SECURE=is_production,
+)
+
 # CORS: restrict to an explicit allow-list (required for credentialed/session-cookie requests -
 # browsers reject wildcard "*" origins once supports_credentials is on). Configure via
 # ALLOWED_ORIGINS (comma-separated) in production; defaults cover local dev.
