@@ -8,10 +8,18 @@ import os
 import sys
 import subprocess
 
+# Resolve paths relative to this script's own location, so it works whether it's
+# invoked as `python start_server.py` (from inside backend/) or `python backend/start_server.py`
+# (from the repo root).
+BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
 def install_requirements():
     """Install required packages if not already installed"""
     try:
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "-r", "requirements.txt"])
+        subprocess.check_call(
+            [sys.executable, "-m", "pip", "install", "-r", os.path.join(BACKEND_DIR, "requirements.txt")]
+        )
         print("✅ Dependencies installed successfully")
     except subprocess.CalledProcessError:
         print("❌ Failed to install dependencies")
@@ -29,9 +37,9 @@ def start_server():
         print("   - POST /api/analyze: Run market analysis")
         print("\n💻 Server will be available at: http://127.0.0.1:5000")
         print("Press Ctrl+C to stop the server")
-        
+
         # Run the Flask server
-        os.system(f"{sys.executable} flask_server.py")
+        subprocess.run([sys.executable, "flask_server.py"], cwd=BACKEND_DIR)
     except KeyboardInterrupt:
         print("\n🛑 Server stopped")
     except Exception as e:

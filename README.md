@@ -26,7 +26,7 @@ MarketAI is a powerful application for analyzing market data using AI techniques
 
 2. Install Python dependencies:
    ```bash
-   pip install -r requirements.txt
+   pip install -r backend/requirements.txt
    ```
 
 3. Install frontend dependencies:
@@ -40,13 +40,18 @@ MarketAI is a powerful application for analyzing market data using AI techniques
 
 1. Start the backend server with our convenient script:
    ```bash
-   python start_server.py
+   python backend/start_server.py
    ```
-   
+
    Or to automatically install dependencies:
    ```bash
-   python start_server.py --install-deps
+   python backend/start_server.py --install-deps
    ```
+
+   The backend (Flask/Python) and frontend (Vite/npm) live in separate directories on
+   purpose: Netlify auto-installs any `requirements.txt` it finds at the repo root as if
+   the whole project were a Python app, which breaks a pure static-frontend deploy. Keeping
+   backend-only files under `backend/` keeps them out of Netlify's build scan.
 
 2. The server will be available at http://127.0.0.1:5000 with the following endpoints:
    - `POST /api/upload` or `/upload`: Upload a file
