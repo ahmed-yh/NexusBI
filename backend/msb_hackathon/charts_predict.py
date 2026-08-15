@@ -1,5 +1,6 @@
 import os
-import google.generativeai as genai
+from google import genai
+from google.genai import types as genai_types
 from flask import Flask, request, jsonify, render_template, session
 from flask_session import Session
 import pandas as pd
@@ -372,28 +373,36 @@ class MarketAnalysisApp:
         Session(self.app)
 
     def initialize_ai(self):
-        """Initialize the Gemini AI model"""
+        """Initialize the Gemini AI client"""
         GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
-        
+
         if not GEMINI_API_KEY:
             raise ValueError(
                 "GEMINI_API_KEY not found. Please set it in the .env file. "
                 "Get your free API key at: https://aistudio.google.com/app/apikey"
             )
-        
-        genai.configure(api_key=GEMINI_API_KEY)
-        logger.info("Gemini AI model initialized successfully")
-        
+
+        self.client = genai.Client(api_key=GEMINI_API_KEY)
+        self.model_name = "gemini-3.5-flash"
+        logger.info("Gemini AI client initialized successfully")
+
+        # Base generation settings, overridden per-call where a prompt needs different
+        # behavior (e.g. lower temperature for structured/parseable output).
         self.generation_config = {
             "temperature": 0.7,
             "top_p": 0.95,
             "top_k": 64,
             "max_output_tokens": 2048,
         }
-        
-        self.model = genai.GenerativeModel(
-            model_name="gemini-2.0-flash",
-            generation_config=self.generation_config
+
+    def _generate(self, prompt: str, **config_overrides):
+        """Send a single-shot prompt to Gemini, using the base generation_config with any
+        per-call overrides applied (e.g. temperature, max_output_tokens)."""
+        config = genai_types.GenerateContentConfig(**{**self.generation_config, **config_overrides})
+        return self.client.models.generate_content(
+            model=self.model_name,
+            contents=prompt,
+            config=config
         )
 
     def initialize_dataset(self, file_path):
@@ -448,11 +457,7 @@ class MarketAnalysisApp:
             # Get AI response. Lower temperature here (vs. the report's free-form generation)
             # since parsing depends on the model strictly following the "A | B | Type | Desc"
             # format - a lower temperature makes it far less likely to drift from that.
-            chat = self.model.start_chat(history=[])
-            response = chat.send_message(
-                prompt,
-                generation_config={**self.generation_config, "temperature": 0.2}
-            )
+            response = self._generate(prompt, temperature=0.2)
             
             if not response or not response.text:
                 logger.error("Received empty response from model")
@@ -746,13 +751,9 @@ Generate ONLY the report content following this structure exactly. The [CHARTS_P
 
             # Create and send prompt
             prompt = self._create_bi_report_prompt(features_description, relationships)
-            chat = self.model.start_chat(history=[])
             # The report template has 10+ sections - give it more room than the default
             # max_output_tokens so longer reports don't get cut off mid-section.
-            response = chat.send_message(
-                prompt,
-                generation_config={**self.generation_config, "max_output_tokens": 4096}
-            )
+            response = self._generate(prompt, max_output_tokens=4096)
             
             if not response or not response.text:
                 logger.error("Received empty response for BI report")
