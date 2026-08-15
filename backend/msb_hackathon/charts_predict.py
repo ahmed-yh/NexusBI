@@ -849,9 +849,34 @@ class DatasetManager:
         self.load_data()
 
     def load_data(self):
-        """Load and validate dataset with encoding detection"""
+        """Load and validate dataset, dispatching on file extension (CSV needs encoding
+        detection since it's plain text; Excel/JSON are handled by their own pandas readers)"""
+        extension = pathlib.Path(self.file_path).suffix.lower()
+
+        if extension in ('.xlsx', '.xls'):
+            try:
+                self.data = pd.read_excel(self.file_path)
+                self.original_data = self.data.copy()
+                logger.info("Dataset loaded successfully as Excel")
+                self._log_initial_dataset_info()
+                return
+            except Exception as e:
+                logger.error(f"Error loading Excel dataset: {e}")
+                raise
+
+        if extension == '.json':
+            try:
+                self.data = pd.read_json(self.file_path)
+                self.original_data = self.data.copy()
+                logger.info("Dataset loaded successfully as JSON")
+                self._log_initial_dataset_info()
+                return
+            except Exception as e:
+                logger.error(f"Error loading JSON dataset: {e}")
+                raise
+
         encodings = ['utf-8', 'latin-1', 'cp1252', 'iso-8859-1', 'utf-16', 'ascii']
-        
+
         for encoding in encodings:
             try:
                 self.data = pd.read_csv(self.file_path, quotechar='"', encoding=encoding)
@@ -866,7 +891,7 @@ class DatasetManager:
                 # For non-encoding errors, raise immediately
                 logger.error(f"Error loading dataset: {e}")
                 raise
-        
+
         # If we get here, none of the encodings worked
         logger.error(f"Failed to load file with any of the supported encodings: {encodings}")
         raise ValueError(f"Could not decode file '{self.file_path}' with any supported encoding")
