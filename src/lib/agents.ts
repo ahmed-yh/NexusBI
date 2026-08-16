@@ -1,13 +1,6 @@
 import axios from 'axios';
 
 // Interface definitions for agent responses
-interface WebScraperResponse {
-  success: boolean;
-  data?: any;
-  error?: string;
-  message?: string;
-}
-
 interface DataImportResponse {
   success: boolean;
   file_info?: {
@@ -88,24 +81,6 @@ const apiClient = axios.create({
 });
 
 // Agent wrappers
-export const webScraperAgent = {
-  scrapeUrl: async (url: string, options?: any): Promise<WebScraperResponse> => {
-    try {
-      const response = await apiClient.post(`/data/web-import`, {
-        url,
-        scrape_config: options || { table_selector: 'table', use_headers: true }
-      });
-      return response.data;
-    } catch (error: any) {
-      console.error('Web scraper agent error:', error);
-      return {
-        success: false,
-        error: error.message || 'Failed to scrape data from URL'
-      };
-    }
-  }
-};
-
 export const dataImportAgent = {
   importFile: async (file: File): Promise<DataImportResponse> => {
     try {
@@ -262,36 +237,6 @@ export const datasetManagerAgent = {
         error: error.message || 'Failed to get dataset info'
       };
     }
-  },
-  
-  validateDataset: async (): Promise<DatasetManagerResponse> => {
-    try {
-      const response = await apiClient.post(`/dataset/validate`);
-      if (response.data) {
-        return {
-          success: true,
-          dataset_info: {
-            name: response.data.filename || 'Validated Dataset',
-            rows: response.data.rows || 0,
-            columns: response.data.columns?.length || 0,
-            size: response.data.memory_usage || 0,
-            column_types: response.data.dtypes || {},
-            validation_errors: response.data.validation_errors || []
-          }
-        };
-      } else {
-        return {
-          success: false,
-          error: 'No validation results returned from server'
-        };
-      }
-    } catch (error: any) {
-      console.error('Dataset validation error:', error);
-      return {
-        success: false,
-        error: error.message || 'Failed to validate dataset'
-      };
-    }
   }
 };
 
@@ -324,9 +269,8 @@ export const dataAnalysisAgent = {
 
 // Export all agents as a default object
 export default {
-  webScraperAgent,
   dataImportAgent,
   dataProcessorAgent,
   datasetManagerAgent,
   dataAnalysisAgent
-}; 
+};
