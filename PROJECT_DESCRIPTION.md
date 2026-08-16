@@ -69,9 +69,7 @@ Because this is a public demo, more than one visitor can be uploading data at th
 - Multiple people can use the public demo at once without interfering with each other's data.
 - Toggle dark/light mode.
 
-**Not working / aspirational (present in the code as unfinished stubs, not real features today):**
-- "Web Import" — importing data directly from a URL. There's a frontend form (`WebImportForm.tsx`) and an agent function (`webScraperAgent.scrapeUrl`) that calls `/data/web-import`, but no matching backend route exists, and the sidebar entry for it has been removed from the UI. It's dead code today, not a working feature.
-- Dataset validation (`datasetManagerAgent.validateDataset`) — same situation: frontend function exists, calls `/api/dataset/validate`, no backend route implements it.
+**Aspirational (not wired up yet):**
 - User-configurable preprocessing — the backend has a separate `/api/preprocess` endpoint that would let preprocessing settings be adjusted, but nothing in the current UI calls it; preprocessing is always the fixed automatic pipeline described above.
 
 ## 5. Business / Practical Value
@@ -102,9 +100,8 @@ Everything below is either a deliberate simplification appropriate to a demo at 
 | Persistent storage | **None** — in-memory only | Deliberate for now; data is lost when the backend process restarts or (on Render's free tier) sleeps from inactivity. Migration path: swap the in-memory `sessions` dict for Redis or a database-backed store behind the same `get_session_state()` interface. |
 | Automated tests | **None exist** | Verification so far has been manual/live smoke-testing during development, not a test suite. |
 | Preprocessing configurability | Fixed pipeline, not user-configurable | An unwired `/api/preprocess` endpoint exists for this but isn't connected to any UI control yet. |
-| Web Import / dataset validation | Stubbed, non-functional | Frontend code exists; no backend implementation. Not currently exposed in the UI. |
 | Hosting cold starts | Expected | Render's free tier sleeps after ~15 min idle; first request after that takes 30-50s to wake up. Fixable by upgrading the Render plan — no code change required. |
-| License | README claims MIT; no `LICENSE` file exists in the repo | Documentation inconsistency, not a functional gap — worth resolving whenever a license is actually chosen. |
+| License | MIT, see `LICENSE` | |
 
 ## 9. Glossary
 
