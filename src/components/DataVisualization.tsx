@@ -400,22 +400,22 @@ export const DataVisualization: React.FC<DataVisualizationProps> = ({ data, feat
           <div className="mb-6">
             <Tabs defaultValue="bar" onValueChange={(value) => setChartType(value as 'bar' | 'scatter' | 'bubble')}>
               <TabsList className="grid w-full grid-cols-3 bg-muted">
-                <TabsTrigger value="bar" className="flex items-center gap-2">
+                <TabsTrigger value="bar" className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm px-1 sm:px-3">
                   <BarChart2 className="h-4 w-4 text-muted-foreground dark:text-foreground" />
-                  Bar Chart
+                  <span className="truncate">Bar Chart</span>
                 </TabsTrigger>
-                <TabsTrigger value="scatter" className="flex items-center gap-2">
+                <TabsTrigger value="scatter" className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm px-1 sm:px-3">
                   <CircleDot className="h-4 w-4 text-muted-foreground dark:text-foreground" />
-                  Scatter Plot
+                  <span className="truncate">Scatter Plot</span>
                 </TabsTrigger>
-                <TabsTrigger value="bubble" className="flex items-center gap-2">
+                <TabsTrigger value="bubble" className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm px-1 sm:px-3">
                   <Box className="h-4 w-4 text-muted-foreground dark:text-foreground" />
-                  Bubble Chart
+                  <span className="truncate">Bubble Chart</span>
                 </TabsTrigger>
               </TabsList>
               
               <div className="grid gap-4 mt-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="x-axis">X-Axis</Label>
                     <Select value={xAxis} onValueChange={(value) => handleChangeAxis('x', value)}>
@@ -452,7 +452,7 @@ export const DataVisualization: React.FC<DataVisualizationProps> = ({ data, feat
                 </div>
                 
                 {(chartType === 'scatter' || chartType === 'bubble') && (
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {chartType === 'bubble' && (
                       <div>
                         <Label htmlFor="z-axis" className="text-foreground">Bubble Size Variable (Z-Axis)</Label>

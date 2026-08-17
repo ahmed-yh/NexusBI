@@ -32,7 +32,7 @@ export const VisualizationPage: React.FC<VisualizationPageProps> = ({
 }) => {
   return (
     <>
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <LineChart className="h-5 w-5 text-accent" />
@@ -42,9 +42,9 @@ export const VisualizationPage: React.FC<VisualizationPageProps> = ({
             Create interactive charts and visualizations from your dataset
           </p>
         </div>
-        
-        <Button 
-          className="gap-2 bg-accent hover:bg-accent/90 text-white"
+
+        <Button
+          className="gap-2 bg-accent hover:bg-accent/90 text-white w-full sm:w-auto"
           onClick={() => onPageChange('upload')}
           disabled={isLoading}
         >
@@ -123,7 +123,7 @@ export const VisualizationPage: React.FC<VisualizationPageProps> = ({
                   We could not find valid data to visualize. Try one of these options:
                 </p>
                 
-                <div className="grid grid-cols-2 gap-4 mt-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
                   <Card 
                     className="p-4 cursor-pointer hover:bg-muted/50 border border-muted transition-colors" 
                     onClick={() => onPageChange('upload')}

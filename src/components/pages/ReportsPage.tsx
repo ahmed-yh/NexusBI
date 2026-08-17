@@ -31,14 +31,14 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({
 }) => {
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <h2 className="text-2xl font-bold tracking-tight text-foreground">
           BI Report Generator
         </h2>
         <Button
           onClick={onGenerateBIReport}
           disabled={isLoading}
-          className="bg-primary text-primary-foreground hover:bg-primary/95"
+          className="bg-primary text-primary-foreground hover:bg-primary/95 w-full sm:w-auto"
         >
           <Upload className="mr-2 h-4 w-4" />
           Generate New Report
@@ -58,10 +58,10 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({
           {analysisResults && analysisResults.report ? (
             <Card className="w-full border-muted bg-card text-card-foreground">
               <CardHeader>
-                <CardTitle className="flex justify-between items-center">
+                <CardTitle className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1">
                   <span>Business Intelligence Report</span>
                   <span className="text-sm font-normal text-muted-foreground">
-                    {analysisResults.analyzed_at && 
+                    {analysisResults.analyzed_at &&
                       `Generated ${new Date(analysisResults.analyzed_at).toLocaleString()}`
                     }
                   </span>

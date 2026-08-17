@@ -31,7 +31,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 }) => {
   return (
     <>
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <BarChart2 className="h-5 w-5 text-accent" />
@@ -41,9 +41,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             Analyze and visualize your data with AI-powered insights
           </p>
         </div>
-        
-        <Button 
-          className="gap-2 bg-accent hover:bg-accent/90 text-white"
+
+        <Button
+          className="gap-2 bg-accent hover:bg-accent/90 text-white w-full sm:w-auto"
           onClick={() => onPageChange('upload')}
           disabled={isLoading}
         >
@@ -103,7 +103,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <h3 className="text-sm font-medium text-muted-foreground mb-2">Statistics</h3>
                         <dl className="space-y-2">

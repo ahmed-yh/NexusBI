@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Upload, FileSpreadsheet, Search, BellDot, User, ChevronDown, BarChart2 } from 'lucide-react';
+import { Upload, FileSpreadsheet, Search, BellDot, User, ChevronDown, BarChart2, Menu } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Sidebar } from './components/Sidebar';
@@ -204,6 +204,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [datasetInfo, setDatasetInfo] = useState<DatasetInfo | null>(null);
   const [analysisResults, setAnalysisResults] = useState<AnalysisResults | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Update URL when page changes to persist state
@@ -495,7 +496,7 @@ function App() {
       case 'upload':
         return (
           <>
-            <div className="flex justify-between items-center mb-8">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   <Upload className="h-5 w-5 text-accent" />
@@ -507,7 +508,7 @@ function App() {
               </div>
 
               <Button
-                className="gap-2 bg-accent hover:bg-accent/90"
+                className="gap-2 bg-accent hover:bg-accent/90 w-full sm:w-auto"
                 onClick={() => handlePageChange('upload')}
                 disabled={isLoading}
               >
@@ -538,7 +539,7 @@ function App() {
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                           <h3 className="text-sm font-medium text-muted-foreground mb-2">Statistics</h3>
                           <dl className="space-y-2">
@@ -666,34 +667,49 @@ function App() {
   return (
     <div className="flex min-h-screen bg-background">
       {/* Sidebar */}
-      <Sidebar currentPage={currentPage} onNavigate={handlePageChange} />
-      
+      <Sidebar
+        currentPage={currentPage}
+        onNavigate={handlePageChange}
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+      />
+
       {/* Main Content */}
-      <main className="flex-1 flex flex-col overflow-hidden ml-64">
+      <main className="flex-1 flex flex-col overflow-hidden md:ml-64">
         {/* Header */}
-        <header className="border-b bg-card px-6 py-3">
-          <div className="flex items-center justify-between">
-            <div className="relative w-72">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <input 
-                type="text" 
-                placeholder="Search analytics..." 
-                className="w-full pl-10 pr-4 py-2 rounded-lg text-sm bg-background border border-input focus:border-accent focus:ring-1 focus:ring-accent focus:outline-none transition-colors" 
-              />
+        <header className="border-b bg-card px-4 sm:px-6 py-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="md:hidden p-2 -ml-2 rounded-md text-muted-foreground hover:bg-muted shrink-0"
+                aria-label="Open menu"
+              >
+                <Menu className="h-5 w-5" />
+              </button>
+
+              <div className="relative w-full max-w-72 hidden sm:block">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <input
+                  type="text"
+                  placeholder="Search analytics..."
+                  className="w-full pl-10 pr-4 py-2 rounded-lg text-sm bg-background border border-input focus:border-accent focus:ring-1 focus:ring-accent focus:outline-none transition-colors"
+                />
+              </div>
             </div>
-            
-            <div className="flex items-center gap-4">
+
+            <div className="flex items-center gap-2 sm:gap-4 shrink-0">
               <DarkModeToggle />
               <Button variant="outline" size="icon" className="rounded-full relative">
                 <BellDot className="h-5 w-5" />
                 <span className="absolute -top-1 -right-1 w-2 h-2 bg-accent rounded-full" />
               </Button>
-              
+
               <div className="flex items-center gap-2 text-sm">
                 <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center">
                   <User className="h-5 w-5" />
                 </div>
-                <div className="flex items-center gap-1 font-medium">
+                <div className="hidden md:flex items-center gap-1 font-medium">
                   <span>TRIOQ</span>
                   <ChevronDown className="h-4 w-4 text-muted-foreground" />
                 </div>
@@ -703,7 +719,7 @@ function App() {
         </header>
 
         {/* Content */}
-        <div className="flex-1 overflow-auto p-8">
+        <div className="flex-1 overflow-auto p-4 sm:p-6 md:p-8">
           {renderPageContent()}
         </div>
       </main>

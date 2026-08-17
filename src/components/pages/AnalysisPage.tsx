@@ -50,7 +50,7 @@ export const AnalysisPage: React.FC<AnalysisPageProps> = ({
 }) => {
   return (
     <>
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <BarChart2 className="h-5 w-5 text-accent" />
@@ -60,9 +60,9 @@ export const AnalysisPage: React.FC<AnalysisPageProps> = ({
             Analyze data and identify patterns, trends, and insights
           </p>
         </div>
-        
-        <Button 
-          className="gap-2 bg-accent hover:bg-accent/90 text-white"
+
+        <Button
+          className="gap-2 bg-accent hover:bg-accent/90 text-white w-full sm:w-auto"
           onClick={onRunAnalysis}
           disabled={!datasetInfo || isLoading}
         >
@@ -87,7 +87,7 @@ export const AnalysisPage: React.FC<AnalysisPageProps> = ({
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-6 grid-cols-2">
+              <div className="grid gap-6 grid-cols-1 sm:grid-cols-2">
                 <div 
                   className="border border-muted rounded-lg p-4 hover:border-primary hover:bg-primary/5 cursor-pointer transition-colors"
                   onClick={onRunAnalysis}
@@ -266,7 +266,7 @@ export const AnalysisPage: React.FC<AnalysisPageProps> = ({
               )}
 
               <Card className="border-muted bg-card text-card-foreground">
-                <CardFooter className="justify-between pt-6">
+                <CardFooter className="justify-between flex-wrap gap-2 pt-6">
                   <Button
                     variant="outline"
                     className="border-muted-foreground/20 hover:bg-muted"
